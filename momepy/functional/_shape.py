@@ -6,6 +6,11 @@ from numpy.typing import NDArray
 from packaging.version import Version
 from pandas import DataFrame, Series
 
+try:
+    from numba import njit
+except ModuleNotFoundError:
+    from libpysal.common import jit as njit
+
 from momepy.functional import _dimension
 
 __all__ = [
@@ -524,19 +529,27 @@ def _true_angles_mask(
     NDArray[np.bool_] | tuple[NDArray[np.bool_], NDArray[np.float_]]
         boolean array or a tuple of boolean array and float array of degrees
     """
-    a = np.roll(points, 1, axis=0)
-    b = points
-    c = np.roll(points, -1, axis=0)
-
-    ba = a - b
-    bc = c - b
-
-    cosine_angle = np.sum(ba * bc, axis=1) / (
-        np.linalg.norm(ba, axis=1) * np.linalg.norm(bc, axis=1)
-    )
-    angles = np.arccos(cosine_angle)
-    degrees = np.degrees(angles)
+    degrees = _angle(points)
 
     if return_degrees:
         return np.logical_or(degrees <= 180 - eps, degrees >= 180 + eps), degrees
     return np.logical_or(degrees <= 180 - eps, degrees >= 180 + eps)
+
+
+@njit
+def _angle(points: NDArray[np.float_]) -> NDArray[np.float_]:
+    """Calculates angles between points using numba."""
+    ax = np.roll(points[:, 0], 1)
+    ay = np.roll(points[:, 1], 1)
+    bx = points[:, 0]
+    by = points[:, 1]
+    cx = np.roll(points[:, 0], -1)
+    cy = np.roll(points[:, 1], -1)
+
+    ba_norm = np.sqrt((ax - bx) ** 2 + (ay - by) ** 2)
+    bc_norm = np.sqrt((cx - bx) ** 2 + (cy - by) ** 2)
+
+    cosine_angle = ((ax - bx) * (cx - bx) + (ay - by) * (cy - by)) / (ba_norm * bc_norm)
+    degrees = np.degrees(np.arccos(cosine_angle))
+
+    return degrees
