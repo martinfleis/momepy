@@ -3,7 +3,7 @@ files: "momepy\/|docs\/"
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
 
-    rev: "v0.15.9"
+    rev: "v0.15.20"
     hooks:
       - id: ruff-check
       - id: ruff-format
@@ -17,11 +17,15 @@ repos:
     hooks:
       - id: yamllint
         files: "."
-        args: [
-          -d,
-          "{extends: default, ignore: .github/ISSUE_TEMPLATE/*}",
-          ".",
-        ]
+        args:
+          - -d
+          - |
+            extends: default
+            ignore: .github/ISSUE_TEMPLATE/*
+            rules:
+              line-length:
+                max: 88
+          - "."
 
 ci:
   autofix_prs: false
